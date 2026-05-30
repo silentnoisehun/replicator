@@ -2,7 +2,7 @@ mod spine;
 mod corn_kernel;
 mod cortex;
 
-use spine::{Spine, SPINE_PATH};
+use spine::Spine;
 use cortex::Cortex;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -15,8 +15,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Csatlakozás a Spine-hoz
     let spine_id: [u8; 16] = *b"AGENT-CORTEX-Z8\x00";
-    let mut spine = Spine::open(SPINE_PATH, spine_id)?;
-    println!("[AGENT] Spine connected: {}", SPINE_PATH);
+    let mut spine = Spine::open_default(spine_id)?;
+    println!("[AGENT] Spine connected: {}", spine.path);
 
     // 2. Cortex inicializálása (MiniMax M2.5)
     let cortex = Cortex::new("abab6.5s-chat");

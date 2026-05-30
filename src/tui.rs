@@ -1,4 +1,4 @@
-use crate::spine::{Spine, SPINE_PATH};
+use crate::spine::Spine;
 use crate::corn_kernel::CornKernel;
 use ratatui::{
     backend::CrosstermBackend,
@@ -26,7 +26,7 @@ pub struct TuiApp {
 impl TuiApp {
     pub fn new() -> io::Result<Self> {
         let spine_id: [u8; 16] = *b"HOPE-TUI-ZONE-01";
-        let spine = Spine::open(SPINE_PATH, spine_id)?;
+        let spine = Spine::open_default(spine_id)?;
         let last_seq = spine.writer_seq();
         
         Ok(Self {

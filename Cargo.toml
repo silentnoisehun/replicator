@@ -15,6 +15,7 @@ name = "hope"
 path = "src/lib.rs"
 
 [dependencies]
+sha2 = "0.10"
 memmap2 = "0.9"
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }

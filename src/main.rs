@@ -8,7 +8,7 @@ mod collective;
 mod vm;
 mod tui;
 
-use spine::{Spine, SPINE_PATH};
+use spine::Spine;
 use cortex::Cortex;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -45,8 +45,8 @@ async fn run_agent() -> Result<(), Box<dyn std::error::Error>> {
     println!("════════════════════════════════════════════════════");
 
     let spine_id: [u8; 16] = *b"AGENT-CORTEX-Z8\x00";
-    let mut spine = Spine::open(SPINE_PATH, spine_id)?;
-    println!("[AGENT] Spine connected: {}", SPINE_PATH);
+    let mut spine = Spine::open_default(spine_id)?;
+    println!("[AGENT] Spine connected: {}", spine.path);
 
     let cortex = Cortex::new("abab6.5s-chat");
     println!("[AGENT] Cortex ready (Model: MiniMax M2.5)");
@@ -116,7 +116,7 @@ async fn run_kernel(main_msg: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     let keypair = HopeKeyPair::generate();
     let spine_id: [u8; 16] = *b"HOPE-STRATOS-Z8\x00";
-    let mut spine = Spine::open(SPINE_PATH, spine_id)?;
+    let mut spine = Spine::open_default(spine_id)?;
 
     println!("── Z8 Saturation ──────────────────────────────────");
     let mut saturator = Z8Saturator::new(0xD0E5);
