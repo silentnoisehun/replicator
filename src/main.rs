@@ -4,6 +4,7 @@ mod cortex;
 mod crypto;
 mod eku;
 mod merkle;
+mod security;
 mod protocol;
 mod collective;
 mod vm;
@@ -21,6 +22,12 @@ use crypto::HopeKeyPair;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Entrópia validáció — VM / konténer környezetben kritikus
+    if let Err(e) = security::entropy_check() {
+        eprintln!("[SECURITY WARNING] {}", e);
+        // Nem fatális — loggoljuk és folytatjuk, de jelezzük
+    }
+
     let args: Vec<String> = env::args().collect();
     
     if args.iter().any(|arg| arg == "--agent") {

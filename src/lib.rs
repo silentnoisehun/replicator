@@ -4,6 +4,7 @@ pub mod cortex;
 pub mod crypto;
 pub mod eku;
 pub mod merkle;
+pub mod security;
 pub mod protocol;
 pub mod collective;
 pub mod vm;

@@ -142,9 +142,28 @@ impl Cortex {
         Ok("Nem érkezett válasz az API-tól.".to_string())
     }
 
-    /// think() + Guard parse — csak AgentCommand-ot ad vissza
-    pub async fn think_command(&self, prompt: &str) -> Result<AgentCommand, Box<dyn std::error::Error>> {
-        let raw = self.think(prompt).await?;
+    /// think() + Guard parse + injection check + rate limit
+    /// A user input soha nem kerül nyers formában az LLM-be
+    pub async fn think_command(
+        &self,
+        raw_user_input: &str,
+        rate_limiter: &mut crate::security::RateLimiter,
+    ) -> Result<AgentCommand, Box<dyn std::error::Error>> {
+        // Rate limit ellenőrzés
+        if !rate_limiter.allow() {
+            eprintln!("[CORTEX GUARD] Rate limit túllépve — parancs eldobva");
+            return Ok(AgentCommand::Noop);
+        }
+
+        // Prompt injekció detektálás
+        if crate::security::detect_prompt_injection(raw_user_input) {
+            eprintln!("[CORTEX GUARD] Prompt injekció gyanú: '{}'", &raw_user_input[..raw_user_input.len().min(80)]);
+            return Ok(AgentCommand::Noop);
+        }
+
+        // User adat szigorú szeparáció a system prompttól
+        let safe_input = crate::security::wrap_user_input(raw_user_input);
+        let raw = self.think(&safe_input).await?;
         let cmd = AgentCommand::parse(&raw);
         if let AgentCommand::Invalid(ref reason) = cmd {
             eprintln!("[CORTEX GUARD] Érvénytelen parancs eldobva: {}", reason);
