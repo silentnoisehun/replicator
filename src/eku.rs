@@ -67,6 +67,10 @@ impl Eku {
         Self { signature: [0u8; 64], header, payload }
     }
 
+    pub fn is_signed(&self) -> bool {
+        self.signature.iter().any(|&b| b != 0)
+    }
+
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         let mut header_bytes = [0u8; std::mem::size_of::<EkuHeader>()];

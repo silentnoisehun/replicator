@@ -83,3 +83,54 @@ impl Z8Saturator {
         self.kernel.active_mask == 0xFF
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn layer_write_read() {
+        let mut k = CornKernel::empty();
+        k.write_layer(0, b"hello");
+        let layer = k.read_layer(0).expect("layer 0 legyen aktiv");
+        assert_eq!(&layer[..5], b"hello");
+    }
+
+    #[test]
+    fn active_mask_tracking() {
+        let mut k = CornKernel::empty();
+        assert_eq!(k.active_mask, 0);
+        k.write_layer(2, b"test");
+        assert_eq!(k.active_mask, 0b00000100);
+        k.write_layer(5, b"data");
+        assert_eq!(k.active_mask, 0b00100100);
+    }
+
+    #[test]
+    fn flatten_only_active() {
+        let mut k = CornKernel::empty();
+        k.write_layer(0, b"AAAA");
+        k.write_layer(1, b"BBBB");
+        let flat = k.flatten();
+        assert_eq!(flat.len(), 64); // 2 aktív layer × 32 byte
+    }
+
+    #[test]
+    fn z8_saturator_fullness() {
+        let mut sat = Z8Saturator::new(0xBEEF);
+        assert!(!sat.is_full());
+        for i in 0..8 {
+            sat.saturate(&[i as u8; 32]);
+        }
+        assert!(sat.is_full());
+    }
+
+    #[test]
+    fn saturator_seq_increments() {
+        let mut sat = Z8Saturator::new(0x0001);
+        sat.saturate(b"first");
+        sat.saturate(b"second");
+        assert_eq!(sat.seq, 2);
+        assert_eq!(sat.kernel.seq, 2);
+    }
+}
