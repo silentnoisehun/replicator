@@ -122,16 +122,19 @@ cargo bench
 
 Criterion HTML report: `target/criterion/report/index.html`
 
-| Benchmark | Átlagos idő |
-|-----------|------------|
-| `CornKernel/write_layer` | ~2 ns |
-| `CornKernel/flatten_8_layers` | ~15 ns |
-| `Z8Saturator/saturate_full_8_layers` | ~20 ns |
-| `Crypto/sign` | ~50 µs |
-| `Crypto/verify` | ~120 µs |
-| `Crypto/sign_and_verify_roundtrip` | ~170 µs |
+| Benchmark | Átlagos idő | Megjegyzés |
+|-----------|------------|------------|
+| `CornKernel/read_layer` | **256 ps** | Sub-nanosecond — cache-hit |
+| `CornKernel/write_layer` | **4.3 ns** | Zero alloc, mmap write |
+| `CornKernel/flatten_8_layers` | **548 ns** | Vec alloc 8×32 byte |
+| `Z8Saturator/saturate_1_layer` | **4.2 ns** | Egyetlen réteg írás |
+| `Z8Saturator/saturate_full_8_layers` | **34 ns** | Teljes Z8 kitöltés |
+| `Crypto/keypair_generate` | **16.4 µs** | Ed25519 OsRng |
+| `Crypto/sign` | **17.5 µs** | Ed25519 aláírás |
+| `Crypto/verify` | **32.6 µs** | Ed25519 ellenőrzés |
+| `Crypto/sign_and_verify_roundtrip` | **49.1 µs** | Teljes kör |
 
-> Pontos számok: `cargo bench` után `target/criterion/report/index.html`
+> Mért eredmények — 100 sample, Criterion. HTML report: `cargo bench` → `target/criterion/report/index.html`
 
 ---
 
