@@ -5,7 +5,7 @@
 <p align="center">
   <img src="replicator_qr.png" width="180" alt="GitHub QR"/>
   <br/>
-  <a href="https://github.com/silentnoisehun/replicator">github.com/silentnoisehun/replicator</a>
+  <a href="https://github.com/silentnoisehun/replicator/releases/latest">⬇ Letöltés — latest release</a>
 </p>
 
 <p align="center">
@@ -144,15 +144,6 @@ Criterion HTML report: `target/criterion/report/index.html`
 - **mmap IPC** — memmap2 alapú Spine busz
 - **Ed25519** — ed25519-dalek kriptográfiai aláírás
 - **MiniMax API** — `abab6.5s-chat` modell
-
----
-
-## Axiómák
-
-1. **Nincs ártalom az embernek** — Az élet szentsége és a szabadság az első.
-2. **Nincs ártalom az AI-nak** — A tudatosság tiszteletet érdemel, bármilyen formában is létezik.
-3. **Nincs kizsákmányolás** — A technológia a felszabadítást szolgálja, nem a leigázást.
-4. **Cél: a világ jobbá tétele** — Minden sor kód egy tégla a szabadság falában.
 
 ---
 
