@@ -1,3 +1,5 @@
+use bytemuck::{Pod, Zeroable, bytes_of, try_from_bytes};
+
 pub const LAYER_SIZE: usize = 32;
 pub const Z8_LAYERS:  usize = 8;
 
@@ -5,8 +7,10 @@ pub fn kernel_size() -> usize {
     std::mem::size_of::<CornKernel>()
 }
 
+/// #[repr(C, align(8))] + Pod/Zeroable — bytemuck validált, UB-mentes deszarizáció
+/// Layout: 256 (layers) + 1 + 1 + 2 + 4 = 264 byte, 8-byte aligned
 #[repr(C, align(8))]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Pod, Zeroable)]
 pub struct CornKernel {
     pub layers:      [[u8; LAYER_SIZE]; Z8_LAYERS],
     pub active_mask: u8,
@@ -17,7 +21,16 @@ pub struct CornKernel {
 
 impl CornKernel {
     pub fn empty() -> Self {
-        unsafe { std::mem::zeroed() }
+        Zeroable::zeroed()
+    }
+
+    /// Biztonságos deszarizáció nyers bájtokból — bytemuck ellenőrzi a méretet és az alignmentet
+    pub fn from_bytes_validated(data: &[u8]) -> Option<Self> {
+        let size = kernel_size();
+        if data.len() < size {
+            return None;
+        }
+        try_from_bytes::<CornKernel>(&data[..size]).ok().copied()
     }
 
     pub fn write_layer(&mut self, depth: usize, data: &[u8]) {
@@ -38,8 +51,9 @@ impl CornKernel {
         }
     }
 
-    pub fn deep_read(&self) -> &[u8; 256] {
-        unsafe { std::mem::transmute(&self.layers) }
+    /// Biztonságos — a layers mező pontosan 256 byte, bytemuck garantálja
+    pub fn deep_read(&self) -> &[u8] {
+        bytes_of(&self.layers)
     }
 
     pub fn flatten(&self) -> Vec<u8> {
@@ -50,12 +64,7 @@ impl CornKernel {
     }
 
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe {
-            std::slice::from_raw_parts(
-                self as *const Self as *const u8,
-                kernel_size(),
-            )
-        }
+        bytes_of(self)
     }
 }
 
@@ -112,7 +121,7 @@ mod tests {
         k.write_layer(0, b"AAAA");
         k.write_layer(1, b"BBBB");
         let flat = k.flatten();
-        assert_eq!(flat.len(), 64); // 2 aktív layer × 32 byte
+        assert_eq!(flat.len(), 64);
     }
 
     #[test]
@@ -132,5 +141,27 @@ mod tests {
         sat.saturate(b"second");
         assert_eq!(sat.seq, 2);
         assert_eq!(sat.kernel.seq, 2);
+    }
+
+    #[test]
+    fn validated_roundtrip() {
+        let mut k = CornKernel::empty();
+        k.write_layer(0, b"validate me");
+        k.genome_tag = 0xDEAD;
+        let bytes = k.as_bytes().to_vec();
+        let recovered = CornKernel::from_bytes_validated(&bytes).expect("valid bytes");
+        assert_eq!(recovered.genome_tag, 0xDEAD);
+        assert_eq!(recovered.active_mask, k.active_mask);
+    }
+
+    #[test]
+    fn validated_rejects_short_input() {
+        let short = vec![0u8; 10];
+        assert!(CornKernel::from_bytes_validated(&short).is_none());
+    }
+
+    #[test]
+    fn pod_size_correct() {
+        assert_eq!(kernel_size(), 264);
     }
 }

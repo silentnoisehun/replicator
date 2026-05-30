@@ -112,10 +112,11 @@ impl Spine {
 
         let slot_idx = seq as usize % RING_CAPACITY;
         let offset = HEADER_SIZE + slot_idx * SLOT_SIZE;
+        let end = offset + crate::corn_kernel::kernel_size();
 
-        unsafe {
-            let ptr = self.mmap.as_ptr().add(offset) as *const CornKernel;
-            Some(std::ptr::read_unaligned(ptr))
-        }
+        if end > self.mmap.len() { return None; }
+
+        // bytemuck validáció — UB-mentes, nincs unsafe read_unaligned
+        CornKernel::from_bytes_validated(&self.mmap[offset..end])
     }
 }

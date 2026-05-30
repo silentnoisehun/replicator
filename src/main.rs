@@ -3,6 +3,7 @@ mod corn_kernel;
 mod cortex;
 mod crypto;
 mod eku;
+mod merkle;
 mod protocol;
 mod collective;
 mod vm;
