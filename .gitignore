@@ -1,0 +1,27 @@
+# Rust
+target/
+target_agent/
+**/*.rs.bk
+Cargo.lock
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Media / personal
+dot/
+*.mp4
+liora_szilvi.png
+ora_mate.png
+*.pdf
+
+# Env
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scratch
+scratch/

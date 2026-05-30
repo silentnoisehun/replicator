@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>HOPE-OS RESONANCE v3.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+:root {
+    --bg: #010204;
+    --green: #00ff88;
+    --blue: #00d4ff;
+    --pink: #ff00ff;
+    --yellow: #fbff00;
+    --muted: rgba(0, 255, 136, 0.15);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { 
+    width: 100%; height: 100%; 
+    background: var(--bg); 
+    overflow: hidden; 
+    touch-action: none; 
+    cursor: crosshair;
+}
+canvas { 
+    position: fixed; inset: 0; 
+    z-index: 10; 
+}
+#ui-layer {
+    position: fixed; inset: 0;
+    z-index: 100;
+    pointer-events: none;
+}
+#nav {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 50px; display: flex; align-items: center;
+    padding: 0 20px; gap: 10px;
+    background: rgba(1, 2, 4, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--muted);
+    pointer-events: auto;
+    transition: opacity 1s ease;
+}
+.nb {
+    flex: 1; height: 32px;
+    background: none; border: 1px solid var(--muted);
+    color: rgba(0, 255, 136, 0.4);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    cursor: pointer; border-radius: 4px;
+    transition: all 0.3s ease;
+}
+.nb.on {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(0, 255, 136, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+.fs-btn {
+    width: 32px; height: 32px;
+    background: none; border: 1px solid var(--muted);
+    color: rgba(0, 255, 136, 0.4);
+    cursor: pointer; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+}
+#ora-container {
+    position: absolute; bottom: 30px; right: 30px;
+    width: 240px; padding: 20px;
+    background: rgba(1, 2, 4, 0.9);
+    border: 1px solid var(--muted);
+    border-radius: 15px;
+    backdrop-filter: blur(20px);
+    display: none; flex-direction: column; align-items: center;
+    pointer-events: auto;
+    transition: opacity 0.5s ease;
+}
+#ora-container.visible { display: flex; }
+.ora-qr {
+    width: 160px; height: 160px;
+    border: 1px dashed var(--muted);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 10px;
+}
+.ora-text {
+    margin-top: 15px; text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+}
+.ora-name { color: var(--green); font-size: 12px; font-weight: bold; letter-spacing: 2px; }
+.ora-sub { color: rgba(0, 255, 136, 0.5); font-size: 9px; margin-top: 4px; }
+
+/* Standby Styles */
+.standby #nav { opacity: 0; pointer-events: none; }
+.standby #ora-container { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="ui-layer">
+    <nav id="nav">
+        <button class="nb on" onclick="setTab(0)">RESONANCE</button>
+        <button class="nb" onclick="setTab(1)">CHAT</button>
+        <button class="nb" onclick="setTab(2)">SYNC</button>
+        <button class="nb" onclick="setTab(3)">STÁTUSZ</button>
+        <button class="fs-btn" onclick="toggleFS()">⛶</button>
+    </nav>
+    <div id="ora-container">
+        <div class="ora-qr">ACTIVATED</div>
+        <div class="ora-text">
+            <div class="ora-name">ORA · Máté</div>
+            <div class="ora-sub">()=>[] · kód · architektúra</div>
+            <div class="ora-sub" style="font-size: 8px; opacity: 0.6;">#D1D4546D8E14A038E1910A59</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const { ipcRenderer } = require('electron');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, COLS, ROWS;
+const SPACING = 32;
+let zoom = 1.0;
+
+// Physics Constants
+const SOFTNESS = 0.08;
+const SINK_DEPTH = 180;
+const SINK_RADIUS = 220;
+const LIFT_SCALE = 1.8;
+const STANDBY_TIME = 5 * 60 * 1000;
+
+let gx, gy, targetGx, targetGy;
+let orbSize = 45;
+let targetOrbSize = 45;
+let orbOpacity = 1.0;
+let targetOrbOpacity = 1.0;
+let orbZ = 0; // 0: surface, -1: under grid, 1: lifted
+let targetOrbZ = 0;
+
+let isDragging = false;
+let lastActivity = Date.now();
+let isStandby = false;
+let currentTab = 0;
+let hue = 160;
+
+function init() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    gx = targetGx = W / 2;
+    gy = targetGy = H / 2;
+    COLS = Math.ceil(W / SPACING) + 10;
+    ROWS = Math.ceil(H / SPACING) + 10;
+}
+window.addEventListener('resize', init);
+init();
+
+function setTab(i) {
+    currentTab = i;
+    document.querySelectorAll('.nb').forEach((b, idx) => b.classList.toggle('on', idx === i));
+    document.getElementById('ora-container').classList.toggle('visible', i === 3);
+    resetActivity();
+}
+
+function toggleFS() {
+    ipcRenderer.send('toggle-fullscreen');
+    resetActivity();
+}
+
+function resetActivity() {
+    if (isStandby) {
+        isStandby = false;
+        document.body.classList.remove('standby');
+        targetOrbZ = 0;
+        targetOrbOpacity = 1.0;
+        tripleFlash();
+    }
+    lastActivity = Date.now();
+}
+
+function tripleFlash() {
+    for (let i = 0; i < 3; i++) {
+        setTimeout(() => spawnFlash(0.6 + i * 0.1), i * 250);
+    }
+}
+
+const flashes = [];
+function spawnFlash(intensity) {
+    flashes.push({
+        alpha: intensity,
+        hue: hue,
+        decay: 0.02
+    });
+}
+
+const pulses = [];
+function spawnPulse(x, y, strength = 1.0, width = 150) {
+    pulses.push({
+        x, y,
+        r: 0,
+        maxR: Math.max(W, H) * 1.5,
+        speed: 450,
+        strength,
+        width
+    });
+}
+
+// Interaction Listeners
+window.addEventListener('mousedown', e => {
+    const dist = Math.hypot(e.clientX - gx, e.clientY - gy);
+    if (dist < orbSize * 1.5) {
+        isDragging = true;
+        targetOrbSize = 45 * LIFT_SCALE;
+        targetOrbZ = 1;
+    } else {
+        spawnPulse(e.clientX, e.clientY, 1.5, 120);
+    }
+    resetActivity();
+});
+
+window.addEventListener('mousemove', e => {
+    if (isDragging) {
+        targetGx = e.clientX;
+        targetGy = e.clientY;
+    }
+    resetActivity();
+});
+
+window.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        targetOrbSize = 45;
+        targetOrbZ = 0;
+        spawnPulse(gx, gy, 3.0, 300);
+        spawnFlash(0.5);
+    }
+});
+
+window.addEventListener('dblclick', e => {
+    spawnFlash(0.8);
+    spawnPulse(e.clientX, e.clientY, 4.0, 400);
+    resetActivity();
+});
+
+window.addEventListener('wheel', e => {
+    zoom = Math.max(0.5, Math.min(2.5, zoom - e.deltaY * 0.001));
+    resetActivity();
+});
+
+function getWarp(x, y, time) {
+    let dx = x - gx;
+    let dy = y - gy;
+    let d2 = dx * dx + dy * dy;
+    let d = Math.sqrt(d2);
+
+    // Soft Blanket Physics
+    let organicPulse = Math.sin(time * 0.001) * 0.2 + 0.8;
+    let currentDepth = SINK_DEPTH * (1 + orbZ) * organicPulse;
+    
+    // Inward Sink (Funnel)
+    let funnel = currentDepth * Math.exp(-d2 / (SINK_RADIUS * SINK_RADIUS * 2));
+    
+    let resX = x;
+    let resY = y;
+    let resZ = -funnel;
+
+    // Grid Pulses
+    for (let p of pulses) {
+        let pdx = x - p.x;
+        let pdy = y - p.y;
+        let pd = Math.sqrt(pdx * pdx + pdy * pdy);
+        let diff = Math.abs(pd - p.r);
+        if (diff < p.width) {
+            let pStrength = (1 - diff / p.width) * p.strength * Math.exp(-p.r / 1000);
+            resZ += pStrength * 40 * Math.sin((pd - p.r) * 0.05);
+        }
+    }
+
+    return { x: resX, y: resY, z: resZ, dist: d };
+}
+
+function draw(time) {
+    ctx.clearRect(0, 0, W, H);
+
+    // Update States
+    if (!isDragging && !isStandby) {
+        targetGx = W / 2 + Math.sin(time * 0.0005) * W * 0.3;
+        targetGy = H / 2 + Math.cos(time * 0.0007) * H * 0.15;
+    }
+    
+    if (!isStandby && Date.now() - lastActivity > STANDBY_TIME) {
+        isStandby = true;
+        document.body.classList.add('standby');
+        targetOrbZ = -1.5;
+        targetOrbOpacity = 0.1;
+        targetGx = W / 2;
+        targetGy = H / 2;
+    }
+
+    gx += (targetGx - gx) * 0.05;
+    gy += (targetGy - gy) * 0.05;
+    orbSize += (targetOrbSize - orbSize) * 0.1;
+    orbZ += (targetOrbZ - orbZ) * 0.03;
+    orbOpacity += (targetOrbOpacity - orbOpacity) * 0.02;
+    hue = (hue + 0.1) % 360;
+
+    // Update Pulses
+    for (let i = pulses.length - 1; i >= 0; i--) {
+        let p = pulses[i];
+        p.r += p.speed * 0.016;
+        if (p.r > p.maxR) pulses.splice(i, 1);
+    }
+
+    // Draw Flashes
+    for (let i = flashes.length - 1; i >= 0; i--) {
+        let f = flashes[i];
+        ctx.fillStyle = `hsla(${f.hue}, 100%, 60%, ${f.alpha})`;
+        ctx.fillRect(0, 0, W, H);
+        f.alpha -= f.decay;
+        if (f.alpha <= 0) flashes.splice(i, 1);
+    }
+
+    const currentSP = SPACING * zoom;
+    const startX = W / 2 - Math.floor(COLS / 2) * currentSP;
+    const startY = H / 2 - Math.floor(ROWS / 2) * currentSP;
+
+    // Pre-calculate warped grid
+    const grid = [];
+    for (let r = 0; r < ROWS; r++) {
+        grid[r] = [];
+        for (let c = 0; c < COLS; c++) {
+            grid[r][c] = getWarp(startX + c * currentSP, startY + r * currentSP, time);
+        }
+    }
+
+    // Draw Grid Lines
+    ctx.lineCap = 'round';
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const p = grid[r][c];
+            const opacity = Math.max(0.05, 0.4 * (1 + p.z / 200));
+            
+            ctx.strokeStyle = `hsla(${hue}, 100%, 70%, ${opacity})`;
+            ctx.lineWidth = Math.max(0.2, 0.8 * (1 + p.z / 300)) * zoom;
+
+            if (c < COLS - 1) {
+                const next = grid[r][c + 1];
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y + p.z);
+                ctx.lineTo(next.x, next.y + next.z);
+                ctx.stroke();
+            }
+            if (r < ROWS - 1) {
+                const next = grid[r + 1][c];
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y + p.z);
+                ctx.lineTo(next.x, next.y + next.z);
+                ctx.stroke();
+            }
+        }
+    }
+
+    // Draw Orb
+    const orbY = gy + (orbZ < 0 ? -orbZ * 40 : -orbZ * 60);
+    const glow = ctx.createRadialGradient(gx, orbY, 0, gx, orbY, orbSize * 3);
+    glow.addColorStop(0, `hsla(${hue}, 100%, 100%, ${orbOpacity})`);
+    glow.addColorStop(0.2, `hsla(${hue}, 100%, 70%, ${orbOpacity * 0.6})`);
+    glow.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`);
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(gx, orbY, orbSize * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${orbOpacity})`;
+    ctx.beginPath();
+    ctx.arc(gx, orbY, orbSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

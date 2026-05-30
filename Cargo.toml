@@ -1,0 +1,19 @@
+[package]
+name = "hope"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+memmap2 = "0.9"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rkyv = { version = "0.7", features = ["validation"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+bytemuck = { version = "1", features = ["derive"] }
+wasmer = "4.3"
+ratatui = "0.26"
+crossterm = { version = "0.27", features = ["event-stream"] }
+futures = "0.3"

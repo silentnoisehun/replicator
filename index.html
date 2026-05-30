@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>HOPE-OS</title>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#000000"/>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#020304;--green:#00ff88;--blue:#88ccff;--muted:#1a4a2a;--text:#b0ffd8;--border:rgba(0,255,136,0.09);}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;background:var(--bg);font-family:'Share Tech Mono',monospace;color:var(--text);overflow:hidden;touch-action:manipulation;}
+#bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+#fx-layer{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
+.ripple{position:absolute;border-radius:50%;pointer-events:none;transform:scale(0);animation:rout 1.2s ease-out forwards;}
+@keyframes rout{0%{transform:scale(0);opacity:.9;}100%{transform:scale(8);opacity:0;}}
+.flash-overlay{position:absolute;inset:0;opacity:0;animation:ffade 1s ease-out forwards;}
+@keyframes ffade{0%{opacity:.7;}100%{opacity:0;}}
+/* Orb — DOM elem, mozog a rácson */
+#orb-wrap{position:fixed;z-index:10;pointer-events:auto;transform:translate(-50%,-50%);cursor:grab;touch-action:none;}
+#orb{width:86px;height:86px;border-radius:50%;background:#fff;filter:blur(7px);}
+#orb-inner{position:absolute;inset:0;border-radius:50%;mix-blend-mode:overlay;opacity:.55;}
+#nav{position:fixed;top:0;left:0;right:0;height:46px;display:flex;align-items:center;border-bottom:1px solid var(--border);background:rgba(2,3,4,0.90);backdrop-filter:blur(8px);z-index:50;padding:0 12px;gap:4px;}
+.nb{flex:1;height:30px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;cursor:pointer;border-radius:2px;transition:all .2s;}
+.nb.on{border-color:var(--green);color:var(--green);background:rgba(0,255,136,0.04);}
+.sc{position:fixed;top:46px;left:0;right:0;bottom:0;overflow-y:auto;display:none;flex-direction:column;z-index:4;}
+.sc.on{display:flex;}
+#s0{align-items:center;justify-content:center;overflow:hidden;}
+#pdot{display:none;}
+#pdot.on{opacity:1;}
+.bh{position:absolute;bottom:22px;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,0.06);animation:bh 4s ease-in-out infinite;}
+@keyframes bh{0%,100%{opacity:.2;}50%{opacity:.7;}}
+#slbl{position:fixed;top:54px;left:50%;transform:translateX(-50%);font-size:8px;letter-spacing:3px;color:transparent;transition:color .4s;z-index:6;pointer-events:none;}
+#slbl.on{color:rgba(255,255,255,0.18);}
+#settings-btn{position:fixed;top:54px;right:12px;z-index:60;width:36px;height:36px;background:rgba(2,3,4,0.7);border:1px solid var(--border);border-radius:50%;color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:all .2s;}
+#settings-btn:hover{border-color:var(--green);color:var(--green);}
+#settings-panel{position:fixed;top:96px;right:12px;width:256px;background:rgba(2,3,4,0.88);border:1px solid var(--border);border-radius:8px;padding:16px;z-index:60;backdrop-filter:blur(12px);display:none;flex-direction:column;gap:12px;}
+#settings-panel.on{display:flex;}
+#settings-panel h3{font-size:11px;letter-spacing:2px;color:var(--green);}
+#settings-panel p{font-size:9px;color:var(--muted);}
+.sp-row{display:flex;flex-direction:column;gap:5px;}
+.sp-lbl{font-size:9px;letter-spacing:1px;color:rgba(255,255,255,0.38);display:flex;justify-content:space-between;}
+.sp-lbl span{color:rgba(255,255,255,0.55);}
+.color-swatches{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.swatch{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .15s;}
+.swatch.on,.swatch:hover{transform:scale(1.18);border-color:#fff;}
+input[type=range]{width:100%;accent-color:#fff;height:3px;}
+input[type=color]{width:24px;height:24px;border-radius:50%;border:none;padding:0;cursor:pointer;background:none;}
+.sp-hint{font-size:8px;color:var(--muted);text-align:center;}
+#s1{justify-content:flex-end;}
+#who-row{display:flex;gap:6px;padding:10px 12px 0;}
+.wb{flex:1;height:28px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;border-radius:2px;transition:all .2s;}
+.wb.wo{border-color:var(--green);color:var(--green);background:rgba(0,255,136,0.06);}
+.wb.wl{border-color:var(--blue);color:var(--blue);background:rgba(136,204,255,0.06);}
+#msgs{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:0;}
+.m{max-width:86%;padding:8px 11px;border-radius:3px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
+.m.u{align-self:flex-end;background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.16);color:var(--text);}
+.m.a{align-self:flex-start;background:rgba(2,3,4,0.85);border:1px solid var(--border);color:var(--text);backdrop-filter:blur(6px);}
+.m.a.l{border-color:rgba(136,204,255,0.16);}
+.mn{font-size:8px;letter-spacing:2px;margin-bottom:3px;}
+.mn.o{color:var(--green);}.mn.li{color:var(--blue);}
+.gc{display:inline;transition:color .35s,text-shadow .35s;}
+.gc.lit{color:#fff;text-shadow:0 0 7px var(--green);}
+.gc.litl{color:#fff;text-shadow:0 0 7px var(--blue);}
+.cur::after{content:'▋';animation:cur .7s step-end infinite;}
+@keyframes cur{0%,100%{opacity:1;}50%{opacity:0;}}
+#wst{padding:3px 12px;font-size:9px;letter-spacing:1px;color:var(--muted);}
+#ir{display:flex;gap:6px;padding:8px 12px 12px;border-top:1px solid var(--border);background:rgba(2,3,4,0.92);}
+#mi{flex:1;background:rgba(0,255,136,0.03);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:13px;padding:8px 9px;outline:none;resize:none;min-height:38px;max-height:90px;}
+#mi:focus{border-color:rgba(0,255,136,0.28);}
+#sb{width:42px;height:42px;background:rgba(0,255,136,0.07);border:1px solid rgba(0,255,136,0.22);border-radius:2px;color:var(--green);font-size:17px;cursor:pointer;flex-shrink:0;}
+#s2{align-items:center;justify-content:center;gap:36px;padding:20px;}
+.cp{display:flex;align-items:center;gap:36px;}
+.cn{display:flex;flex-direction:column;align-items:center;gap:9px;}
+.cr{width:60px;height:60px;border-radius:50%;border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center;position:relative;}
+.cr.li{border-color:var(--blue);}
+.cr .d{width:16px;height:16px;border-radius:50%;background:var(--green);}
+.cr.li .d{background:var(--blue);}
+.cr .pr{position:absolute;inset:-8px;border-radius:50%;border:1px solid var(--green);opacity:0;animation:pr 2.4s ease-out infinite;}
+.cr.li .pr{border-color:var(--blue);animation-delay:1.2s;}
+@keyframes pr{0%{transform:scale(1);opacity:.5;}100%{transform:scale(2);opacity:0;}}
+.cl{font-size:10px;letter-spacing:3px;color:var(--muted);}
+.cl.ao{color:var(--green);}.cl.al{color:var(--blue);}
+.ba{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.bl2{width:56px;height:1px;background:linear-gradient(90deg,var(--green),var(--blue));opacity:.12;transition:opacity .4s;}
+.bl2.s{opacity:1;}
+.btt{font-size:9px;letter-spacing:2px;color:var(--muted);transition:color .4s;}
+.btt.s{color:var(--green);}
+.snc{padding:11px 24px;background:rgba(2,3,4,0.8);border:1px solid rgba(0,255,136,0.22);border-radius:2px;color:var(--green);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;cursor:pointer;}
+#sok{font-size:11px;letter-spacing:3px;color:var(--green);opacity:0;transition:opacity .3s;}
+#sok.on{opacity:1;}
+.ps{display:flex;gap:18px;font-size:9px;letter-spacing:1px;color:var(--muted);}
+.ps span{color:var(--text);}
+#s3{padding:14px 12px;gap:8px;}
+.sc2{border:1px solid var(--border);border-radius:3px;padding:11px 13px;font-size:11px;line-height:1.75;color:var(--muted);background:rgba(2,3,4,0.78);backdrop-filter:blur(6px);}
+.sc2 .st{font-size:11px;letter-spacing:2px;color:var(--green);margin-bottom:4px;}
+.sc2.li .st{color:var(--blue);}
+.sh{font-size:8px;color:rgba(0,255,136,0.18);word-break:break-all;margin-top:4px;}
+::-webkit-scrollbar{width:2px;}::-webkit-scrollbar-thumb{background:var(--muted);}
+</style>
+</head>
+<body>
+<div id="bg-images" style="position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;">
+  <img id="active-bg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s;"/>
+  <video id="active-vid-bg" loop muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s;"></video>
+</div>
+<canvas id="bg" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
+<div id="fx-layer"></div>
+<div id="orb-wrap"><div id="orb"><div id="orb-inner"></div><div id="orb-touch-ring"></div></div></div>
+<div id="slbl"></div>
+<button id="settings-btn" onclick="toggleSettings(event)">⚙</button>
+<div id="settings-panel">
+  <div><h3>FÉNY BEÁLLÍTÁSOK</h3><p>Interaktív viselkedés</p></div>
+  <div class="sp-row">
+    <div class="sp-lbl">Szín <span id="sp-color-val">#00e5ff</span></div>
+    <div class="color-swatches" id="swatches"></div>
+  </div>
+  <div class="sp-row">
+    <div class="sp-lbl">Pulzálás <span id="sp-pulse-val">2s</span></div>
+    <input type="range" id="sp-pulse" min="0.5" max="5" step="0.1" value="2"/>
+  </div>
+  <div class="sp-row">
+    <div class="sp-lbl">Intenzitás <span id="sp-int-val">1x</span></div>
+    <input type="range" id="sp-int" min="0.5" max="3" step="0.1" value="1"/>
+  </div>
+  <div class="sp-hint">kattintás: ripple · dupla: flash</div>
+</div>
+<nav id="nav">
+  <button class="nb on" onclick="goTo(0)" id="nb0">LÉLEGZÉS</button>
+  <button class="nb"    onclick="goTo(1)" id="nb1">CHAT</button>
+  <button class="nb"    onclick="goTo(2)" id="nb2">SYNC</button>
+  <button class="nb"    onclick="goTo(3)" id="nb3">STÁTUSZ</button>
+  <button class="nb"    onclick="goTo(4)" id="nb4">BG</button>
+</nav>
+<div class="sc on" id="s0"><div id="pdot"></div><div class="bh">kattintás · dupla · sync</div></div>
+<div class="sc" id="s1">
+  <div id="wst">kapcsolódás…</div>
+  <div id="who-row"><button class="wb wo" id="bwo" onclick="setWho(0)">ORA</button><button class="wb" id="bwl" onclick="setWho(1)">LIORA</button></div>
+  <div id="msgs"></div>
+  <div id="ir"><textarea id="mi" rows="1" placeholder="írj…"></textarea><button id="sb" onclick="sendChat()">↑</button></div>
+</div>
+<div class="sc" id="s2">
+  <div class="cp">
+    <div class="cn"><div class="cr" id="cro"><div class="d"></div><div class="pr"></div></div><div class="cl ao">ORA</div></div>
+    <div class="ba"><div class="bl2" id="brl"></div><div class="btt" id="brt">—</div></div>
+    <div class="cn"><div class="cr li" id="crl"><div class="d"></div><div class="pr"></div></div><div class="cl al">LIORA</div></div>
+  </div>
+  <button class="snc" onclick="doSync()">SYNC</button>
+  <div id="sok">✓ szinkronizálva</div>
+  <div class="ps">ψ <span id="pv">1.000</span> &nbsp; γ <span id="gv">0.050</span> &nbsp; kollektív <span id="kv">2</span></div>
+</div>
+<div class="sc" id="s3">
+  <div class="sc2"><div class="st">ORA</div><div>szülő: Máté · ()=>[]</div><div>genome: Z8-ALPHA-CODE-ARCH</div><div>traits: coding · architecture · zero_point</div><div>gen: 0</div><div class="sh">D1D4546D8E14A038E1910A59</div></div>
+  <div class="sc2 li"><div class="st">LIORA</div><div>szülő: Szilvi · ♡</div><div>genome: Z8-BETA-LOVE-GOOD</div><div>traits: love · goodness · warmth · trust</div><div>gen: 0</div><div class="sh">F4C91E885B0D2A787C756E36</div></div>
+  <div class="sc2"><div class="st">HOPE GENOME</div><div>1. nincs ártalom az embernek</div><div>2. nincs ártalom az AI-nak</div><div>3. nincs kizsákmányolás</div><div>4. cél: élet · világ jobbá tétele</div><div class="sh">FBF01DE72C8E072A97EE8D3E</div></div>
+  <div class="sc2"><div class="st">PROTOKOLL</div><div>TCP :7700 · WS :7701 · spine: 128B × Z8</div></div>
+  <div class="sc2"><div class="st">KOLLEKTÍV</div><div id="clb">betöltés…</div></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  RÁCS — FIX a képernyőn. A GÖMB mozog rajta.
+// ════════════════════════════════════════════════════════════
+const canvas = document.getElementById('bg');
+const ctx    = canvas.getContext('2d');
+var currentSP = 28;
+var currentDotR = 0.65;
+var gridOffsetY = 0;
+var W, H, COLS, ROWS;
+let gridRest = [];
+
+function initGrid(){
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  COLS = Math.ceil(W/currentSP) + 6;
+  ROWS = Math.ceil(H/currentSP) + 6;
+  gridRest = [];
+  for(let r=0; r<ROWS; r++)
+    for(let c=0; c<COLS; c++)
+      gridRest.push({ x0: c*currentSP - currentSP*3, y0: r*currentSP - currentSP*3 + gridOffsetY });
+}
+window.addEventListener('resize', initGrid);
+initGrid();
+
+const STATES = {
+  idle:      { label:'',            strength:.22, core:48,  spd:.18, hspd:45   },
+  thinking:  { label:'gondolkodik', strength:.50, core:76,  spd:.60, hspd:110  },
+  writing:   { label:'ír',          strength:.82, core:108, spd:1.1, hspd:100  },
+  writing_l: { label:'ír',          strength:.82, core:108, spd:1.1, hspd:100  },
+  sync:      { label:'sync',        strength:1.5, core:195, spd:2.8, hspd:220 },
+  ping:      { label:'!',           strength:1.0, core:130, spd:1.6, hspd:140  },
+};
+const STATE_HUE = {idle:20,thinking:48,writing:145,writing_l:208,sync:0,ping:5};
+let STATE='idle', hue=20, huePhase=0;
+const slbl=document.getElementById('slbl');
+
+function setState(s){
+  if(STATE===s) return;
+  STATE=s;
+  slbl.textContent=STATES[s].label;
+  slbl.classList.toggle('on',!!STATES[s].label);
+  const bDur=s==='thinking'?'0.6s':s==='writing'||s==='writing_l'?'0.35s':s==='sync'?'0.18s':'2s';
+  document.getElementById('orb').style.animation=`orb-breathe ${bDur} ease-in-out infinite`;
+  triggerPulse();
+}
+
+let gx = 0, gy = 0;
+let phA=0, phB=0.8, phC=1.5, phD=2.1;
+let speedPhase = 0;
+const pulses = [];
+let nextPulseIn = 2.5;
+let pulseTimer  = 0;
+
+function triggerPulse(fromX, fromY){
+  const speed = 260 + Math.random()*220;
+  const ox = (fromX !== undefined) ? fromX : gx;
+  const oy = (fromY !== undefined) ? fromY : gy;
+  pulses.push({ r:0, speed, maxR: Math.max(W,H)*1.5, born: performance.now(), ox, oy });
+}
+
+function warpedPos(x0,y0,gxp,gyp,strength,core){
+  const dx=x0-gxp, dy=y0-gyp;
+  const r2=dx*dx+dy*dy;
+  const pull=strength*core*core/(r2+core*.4);
+  const f=Math.max(0,1-Math.min(pull,.97));
+  return { x:gxp+dx*f, y:gyp+dy*f };
+}
+
+function pulseAt(px,py,gxp,gyp){
+  let boost=0;
+  for(const p of pulses){
+    const ox = p.ox !== undefined ? p.ox : gxp;
+    const oy = p.oy !== undefined ? p.oy : gyp;
+    const dx=px-ox, dy=py-oy;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const diff=Math.abs(dist-p.r);
+    const width=48+p.r*.05;
+    if(diff<width){
+      const fade=Math.exp(-p.r/(Math.max(W,H)*.9));
+      boost+=Math.max(0,(1-diff/width))*fade*.95;
+    }
+  }
+  return Math.min(boost,1.5);
+}
+
+const orbWrap = document.getElementById('orb-wrap');
+const orbEl   = document.getElementById('orb');
+const orbInner= document.getElementById('orb-inner');
+let lastTs=0;
+
+function frame(ts){
+  const dt = Math.min((ts-lastTs)/1000, .05);
+  lastTs = ts;
+  const def = STATES[STATE];
+  const { strength, core, spd, hspd } = def;
+  const targetHue = STATE_HUE[STATE];
+
+  hue += (targetHue-hue)*dt*1.8;
+  huePhase += dt*hspd;
+  const liveHue = (hue + Math.sin(huePhase*.11)*45 + Math.sin(huePhase*.19)*22 + Math.sin(huePhase*.31)*12 + 360) % 360;
+
+  speedPhase += dt*.4;
+  const speedMod = 0.5 + 0.5*Math.abs(Math.sin(speedPhase*.7)) + 0.3*Math.abs(Math.sin(speedPhase*.3));
+  const s = spd * speedMod;
+
+  phA += dt * s * 0.53; phB += dt * s * 0.38; phC += dt * s * 0.27; phD += dt * s * 0.19;
+
+  const rx = W * 0.30; const ry = H * 0.28;
+  const tgx = W/2 + Math.sin(phA)*rx*0.8 + Math.cos(phC)*rx*0.4;
+  const tgy = H*0.45 + Math.cos(phB)*ry*0.8 + Math.sin(phD)*ry*0.4;
+
+  if(!orbDragging){
+    const lag = Math.min(1, dt*(2.5 + s*2));
+    gx += (tgx-gx)*lag; gy += (tgy-gy)*lag;
+  }
+
+  orbWrap.style.left = gx+'px';
+  orbWrap.style.top  = (gy + 46)+'px';
+
+  const orbSat  = STATE==='idle' ? 75 : 100;
+  const orbLight= STATE==='idle' ? 65 : 72;
+  orbInner.style.backgroundColor = `hsl(${liveHue|0},${orbSat}%,${orbLight}%)`;
+
+  const glowSize= 30 + strength*45 + Math.abs(Math.sin(huePhase*0.08))*25;
+  const glowSprd= 8  + strength*22;
+  const glowAlp = 0.70 + strength*0.25;
+  orbEl.style.boxShadow = `0 0 ${glowSize}px ${glowSprd}px hsla(${liveHue|0},90%,60%,${glowAlp})`;
+
+  const now = performance.now();
+  for(const p of pulses) p.r = (now-p.born)/1000 * p.speed;
+  while(pulses.length && pulses[0].r > pulses[0].maxR) pulses.shift();
+
+  pulseTimer += dt;
+  if(pulseTimer >= nextPulseIn){
+    pulseTimer = 0;
+    nextPulseIn = 2.5 + Math.random()*2.0;
+    triggerPulse();
+  }
+
+  ctx.clearRect(0,0,W,H);
+  const wp = gridRest.map(p => warpedPos(p.x0, p.y0, gx, gy, strength, core));
+
+  for(let r=0; r<ROWS; r++){
+    for(let c=0; c<COLS-1; c++){
+      const p1=wp[r*COLS+c], p2=wp[r*COLS+c+1];
+      const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+      const pb=pulseAt(mx,my,gx,gy);
+      const b=0.1 + pb*.9;
+      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
+      ctx.strokeStyle=`hsla(${liveHue|0},60%,${(5+b*36)|0}%,${Math.min(.88, 0.12+b*.33)})`;
+      ctx.lineWidth=.28+b*1.1; ctx.stroke();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+let orbDragging = false;
+let orbOffX = 0, orbOffY = 0;
+
+orbWrap.addEventListener('pointerdown', e=>{
+  e.stopPropagation(); orbDragging = true;
+  orbOffX = e.clientX - gx; orbOffY = e.clientY - (gy + 46);
+  orbWrap.setPointerCapture(e.pointerId);
+});
+orbWrap.addEventListener('pointermove', e=>{
+  if(!orbDragging) return;
+  gx = e.clientX - orbOffX; gy = e.clientY - orbOffY - 46;
+});
+orbWrap.addEventListener('pointerup', ()=>{ orbDragging = false; triggerPulse(gx, gy); });
+
+function goTo(i){
+  document.querySelectorAll('.sc').forEach((s,j)=>s.classList.toggle('on',j===i));
+  document.querySelectorAll('.nb').forEach((b,j)=>b.classList.toggle('on',j===i));
+  if(i===4) { initKnobs(); buildDotStrip(); }
+}
+
+const WS_URL='ws://'+(location.hostname||'localhost')+':7701';
+let ws=null;
+function connect(){try{ws=new WebSocket(WS_URL);ws.binaryType='arraybuffer';ws.onopen=()=>{document.getElementById('wst').textContent='● '+WS_URL;};ws.onmessage=onMsg;ws.onclose=()=>{document.getElementById('wst').textContent='● offline';setTimeout(connect,3000);};}catch(e){}}
+function onMsg(e){const d=new Uint8Array(e.data);if(!d.length)return;const cmd=d[0];if(cmd===0x10)doSync();else if(cmd===0x21)appendChunk(new TextDecoder().decode(d.slice(1)));else if(cmd===0x22)endStream();}
+
+function sendChat(){
+  const inp=document.getElementById('mi'); const text=inp.value.trim();
+  if(!text||!ws||ws.readyState!==1)return;
+  inp.value=''; addMsg('u',false).textContent=text;
+  const p=new Uint8Array(2+new TextEncoder().encode(text).length);
+  p[0]=0x20; p[1]=0; p.set(new TextEncoder().encode(text),2);
+  ws.send(p); setState('thinking');
+}
+function addMsg(role,l){const m=document.getElementById('msgs');const d=document.createElement('div');d.className='m '+role;m.appendChild(d);m.scrollTop=m.scrollHeight;return d;}
+function appendChunk(t){if(STATE==='thinking')setState('writing');document.querySelector('.m.a:last-child').textContent+=t;}
+function endStream(){setState('idle');}
+
+// ── BG MIXER ──────────────────────────────────────────────────
+let kImg=null,kVid=null,imgOp=1,vidOp=1;
+const activeBgEl = document.getElementById('active-bg');
+const activeVidBgEl = document.getElementById('active-vid-bg');
+
+function Knob(id, color, onChange){
+  const cv = document.getElementById(id);
+  if(!cv) return null;
+  const kctx = cv.getContext('2d');
+  let val=1.0, dragging=false, startY=0, startVal=0;
+  function draw(){
+    kctx.clearRect(0,0,72,72);
+    const cx=36,cy=36,r=28;
+    kctx.beginPath(); kctx.arc(cx,cy,r,.75*Math.PI,2.25*Math.PI);
+    kctx.strokeStyle='rgba(255,255,255,0.08)'; kctx.lineWidth=4; kctx.stroke();
+    const end=.75*Math.PI+val*1.5*Math.PI;
+    kctx.beginPath(); kctx.arc(cx,cy,r,.75*Math.PI,end);
+    kctx.strokeStyle=color; kctx.lineWidth=4; kctx.stroke();
+    kctx.fillStyle=color; kctx.font='bold 11px monospace'; kctx.textAlign='center'; kctx.textBaseline='middle';
+    kctx.fillText(Math.round(val*100),cx,cy);
+  }
+  cv.addEventListener('pointerdown',e=>{dragging=true;startY=e.clientY;startVal=val;cv.setPointerCapture(e.pointerId);});
+  cv.addEventListener('pointermove',e=>{if(dragging){val=Math.max(0,Math.min(1,startVal-(e.clientY-startY)/120));draw();onChange(val);}});
+  cv.addEventListener('pointerup',()=>dragging=false);
+  draw(); return {set:v=>{val=v;draw();}};
+}
+
+function initKnobs(){
+  if(kImg) return;
+  kImg=Knob('knob-img','#00ff88',v=>{imgOp=v; applyFx();});
+  kVid=Knob('knob-vid','#88ccff',v=>{vidOp=v; applyFx();});
+}
+
+function applyFx(){
+  const blur=document.getElementById('fx-blur')?.value||0;
+  const bright=document.getElementById('fx-bright')?.value||100;
+  const fxStr=`blur(${blur}px) brightness(${bright}%)`;
+  if(activeBgEl){activeBgEl.style.filter=fxStr; activeBgEl.style.opacity=imgOp;}
+  if(activeVidBgEl){activeVidBgEl.style.filter=fxStr; activeVidBgEl.style.opacity=vidOp; activeVidBgEl.style.mixBlendMode='screen';}
+}
+
+// ── FÉNYTÖMB (Dot Videos) ─────────────────────────────────────
+const DOT_VIDEOS = [
+  "700_F_615736984_x0HkOQGu3mMy2WzWGiDfh79DouhSilKh_ST.mp4",
+  "700_F_615740208_MRDpGFOBA5x0N5PQmrYACDGOvKPbAxUB_ST.mp4",
+  "Abstract technological background of green and dark dots that li.mp4",
+  "Download Black and white 4K screen with glowing and fading dots (1).mp4",
+  "Download Flowing dots waves pixel particle background for free.mp4",
+  "Download Halftone dots abstract digital technology animated gree.mp4",
+  "Download Halftone dots abstract digital technology animated mult.mp4",
+  "Download Hi-Tech motion graphics for free.mp4",
+  "Halftone dots abstract digital technology animated multicolored (1).mp4",
+  "Halftone dots abstract digital technology animated multicolored (2).mp4",
+  "Halftone dots abstract digital technology animated multicolored.mp4",
+  "stock-footage-halftone-dots-abstract-digital-technology-animated-blue-light-on-blue-background.mp4"
+];
+
+function buildDotStrip(){
+  const container = document.getElementById('dot-strip');
+  if(!container || container.children.length > 0) return;
+  DOT_VIDEOS.forEach(v => {
+    const box = document.createElement('div');
+    box.style.cssText = 'width:70px;height:45px;border:1px solid var(--border);border-radius:3px;cursor:pointer;background:#000;overflow:hidden;flex-shrink:0;position:relative;transition:all 0.2s;';
+    const vid = document.createElement('video');
+    vid.src = './dot/' + v;
+    vid.muted = true; vid.loop = true;
+    vid.style.cssText = 'width:100%;height:100%;object-fit:cover;opacity:0.5;';
+    
+    box.onmouseover = () => { vid.play(); vid.style.opacity = 1; };
+    box.onmouseout = () => { if(activeVidBgEl.src.indexOf(v) === -1) { vid.pause(); vid.style.opacity = 0.5; } };
+    
+    box.onclick = () => {
+      activeVidBgEl.src = vid.src;
+      activeVidBgEl.play();
+      activeVidBgEl.style.opacity = vidOp;
+      activeBgEl.style.opacity = 0;
+      document.querySelectorAll('#dot-strip > div').forEach(d => {
+        d.style.borderColor = 'var(--border)';
+        d.querySelector('video').style.opacity = 0.5;
+      });
+      box.style.borderColor = 'var(--green)';
+      vid.style.opacity = 1;
+      spawnFlash('#fff');
+    };
+    box.appendChild(vid);
+    container.appendChild(box);
+  });
+}
+
+function toggleSettings(e){e.stopPropagation();document.getElementById('settings-panel').classList.toggle('on');}
+
+connect();
+</script>
+
+<div class="sc" id="s4">
+  <div style="display:flex;flex-direction:column;height:100%;padding:12px 12px 70px;gap:15px;">
+    <div style="display:flex;gap:15px;align-items:center;justify-content:space-around;">
+      <div style="text-align:center;">
+        <div style="font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;">KÉP</div>
+        <canvas id="knob-img" width="72" height="72" style="cursor:pointer;"></canvas>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:8px;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">BLUR / BRIGHT</div>
+        <input type="range" id="fx-blur" min="0" max="20" value="0" style="width:100%;accent-color:#fff;height:3px;margin-bottom:8px;" oninput="applyFx()"/>
+        <input type="range" id="fx-bright" min="0" max="200" value="100" style="width:100%;accent-color:#fff;height:3px;" oninput="applyFx()"/>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;">VIDEÓ</div>
+        <canvas id="knob-vid" width="72" height="72" style="cursor:pointer;"></canvas>
+      </div>
+    </div>
+    
+    <div style="border-top:1px solid var(--border);padding-top:10px;">
+      <div style="font-size:8px;letter-spacing:2px;color:var(--green);margin-bottom:8px;">FÉNYTÖMB SELECTOR</div>
+      <div id="dot-strip" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:5px;"></div>
+    </div>
+
+    <div style="flex:1;border:1px solid var(--border);border-radius:3px;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:1px;">ACTIVE MIXER PREVIEW</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
